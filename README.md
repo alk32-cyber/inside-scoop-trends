@@ -227,7 +227,7 @@ Google has no generally available public Trends API. This build uses SerpApi's G
 
 ## Scheduling and deployment
 
-- **Vercel**: set `DATABASE_URL` (Neon, Supabase or Vercel Postgres), `CRON_SECRET` and the provider keys. `vercel.json` calls `/api/cron/ingest` every 30 minutes; each call only runs the providers that are due under their own interval and daily budget. Cron frequency limits depend on your Vercel plan, so check the Cron Jobs usage docs. If your plan allows fewer runs, any external scheduler (for example a GitHub Actions cron) can call the endpoint with the Bearer secret.
+- **Vercel**: set `DATABASE_URL` (Neon, Supabase or Vercel Postgres), `CRON_SECRET` and the provider keys. `vercel.json` calls `/api/cron/ingest` once a day (06:00 UTC), which works on every plan; each call runs the providers that are due under their own interval and daily budget. For fresher data, raise the cron frequency if your Vercel plan allows it (check the Cron Jobs usage docs), or have any external scheduler (for example a GitHub Actions cron) call the endpoint with the Bearer secret. Without `DATABASE_URL` the route refuses to run, because collected data would not persist. Deployments without a database can still show the bundled demo (`DEMO_MODE=true`, loaded from `demo/demo-snapshot.json.gz` and rebuilt with `npm run demo:snapshot`).
 - **Self-hosted**: run `npm run scheduler` (ticks every `SCHEDULER_TICK_MINUTES`) next to `npm start`.
 - **Reliability**:
   - Transient errors (408/429/5xx/network) are retried with exponential backoff and jitter, honouring `Retry-After`.

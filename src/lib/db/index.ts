@@ -87,11 +87,81 @@ async function createPgliteDb(dataDir?: string): Promise<Db> {
   };
 }
 
+/** Bundled demo data (built by `npm run demo:snapshot`), used when no persistent database exists. */
+export const DEMO_SNAPSHOT_PATH = path.join(process.cwd(), "demo", "demo-snapshot.json.gz");
+
+/** Tables in foreign-key order. */
+const SNAPSHOT_TABLES = [
+  "topics",
+  "topic_aliases",
+  "source_items",
+  "item_metric_snapshots",
+  "topic_source_links",
+  "observations",
+  "trend_scores",
+  "trend_score_history",
+  "content_recommendations",
+  "ingestion_runs",
+];
+
+/**
+ * Serverless hosts (Vercel) have no persistent writable disk. Without DATABASE_URL the app
+ * runs on an in-memory database there: the demo snapshot in demo mode, otherwise empty.
+ */
+export function isEphemeralDb(env: Record<string, string | undefined> = process.env): boolean {
+  return !env.DATABASE_URL && Boolean(env.VERCEL);
+}
+
+/** Exports demo rows (is_demo or belonging to demo topics/items) as gzipped JSON. */
+export async function exportDemoSnapshot(db: Db): Promise<Buffer> {
+  const { gzipSync } = await import("node:zlib");
+  const filters: Record<string, string> = {
+    topics: "is_demo",
+    topic_aliases: "topic_id IN (SELECT id FROM topics WHERE is_demo)",
+    source_items: "is_demo",
+    item_metric_snapshots: "item_id IN (SELECT id FROM source_items WHERE is_demo)",
+    topic_source_links: "topic_id IN (SELECT id FROM topics WHERE is_demo)",
+  };
+  const out: Record<string, unknown[]> = {};
+  for (const t of SNAPSHOT_TABLES) {
+    const [row] = await db.query<{ rows: unknown[] | null }>(`SELECT json_agg(x) AS rows FROM "${t}" x WHERE ${filters[t] ?? "is_demo"}`);
+    out[t] = row?.rows ?? [];
+  }
+  return gzipSync(JSON.stringify(out));
+}
+
+/** Loads a demo snapshot with one bulk insert per table, then fixes sequences. */
+export async function importDemoSnapshot(db: Db, gz: Buffer): Promise<void> {
+  const { gunzipSync } = await import("node:zlib");
+  const data = JSON.parse(gunzipSync(gz).toString("utf8")) as Record<string, unknown[]>;
+  for (const t of SNAPSHOT_TABLES) {
+    const rows = data[t] ?? [];
+    if (rows.length === 0) continue;
+    await db.query(`INSERT INTO "${t}" SELECT * FROM json_populate_recordset(NULL::"${t}", $1::json) ON CONFLICT DO NOTHING`, [JSON.stringify(rows)]);
+  }
+  const seqs = await db.query<{ table_name: string; column_name: string }>(
+    `SELECT table_name, column_name FROM information_schema.columns WHERE table_schema = 'public' AND column_default LIKE 'nextval%'`,
+  );
+  for (const s of seqs) {
+    await db.query(`SELECT setval(pg_get_serial_sequence('"${s.table_name}"', '${s.column_name}'), COALESCE((SELECT MAX("${s.column_name}") FROM "${s.table_name}"), 0) + 1, false)`);
+  }
+}
+
 /** Opens a database from the environment: DATABASE_URL (Postgres) or an embedded PGlite directory. */
 export async function openDb(opts: { inMemory?: boolean } = {}): Promise<Db> {
   if (opts.inMemory) return createPgliteDb();
   const url = process.env.DATABASE_URL;
   if (url) return createPgDb(url);
+  if (isEphemeralDb()) {
+    const db = await createPgliteDb();
+    const demo = process.env.DEMO_MODE === "true" || process.env.DEMO_MODE === "1";
+    if (demo && fs.existsSync(DEMO_SNAPSHOT_PATH)) {
+      await migrate(db);
+      await importDemoSnapshot(db, fs.readFileSync(DEMO_SNAPSHOT_PATH));
+      await reanchorDemo(db);
+    }
+    return db;
+  }
   return createPgliteDb(process.env.PGLITE_DATA_DIR ?? path.join(process.cwd(), ".data", "pglite"));
 }
 
@@ -133,4 +203,26 @@ export async function migrate(db: Db, dir = migrationsDir()): Promise<string[]> 
     ran.push(file);
   }
   return ran;
+}
+
+/**
+ * Shifts every timestamp of the (simulated) demo snapshot forward so its timeline ends now.
+ * Without this, a snapshot built days ago would show every topic as stale. Only ever applied
+ * to the in-memory demo copy; the dashboard banner states that the timeline is simulated.
+ */
+export async function reanchorDemo(db: Db, now = new Date()): Promise<void> {
+  const [row] = await db.query<{ latest: Date | null }>("SELECT MAX(computed_at) AS latest FROM trend_scores WHERE is_demo");
+  if (!row?.latest) return;
+  const shiftSeconds = Math.floor((now.getTime() - new Date(row.latest).getTime()) / 1000);
+  if (shiftSeconds <= 0) return;
+  const cols = await db.query<{ table_name: string; column_name: string }>(
+    `SELECT table_name, column_name FROM information_schema.columns
+      WHERE table_schema = 'public' AND data_type = 'timestamp with time zone' AND table_name <> 'schema_migrations'`,
+  );
+  const byTable = new Map<string, string[]>();
+  for (const c of cols) byTable.set(c.table_name, [...(byTable.get(c.table_name) ?? []), c.column_name]);
+  for (const [table, columns] of byTable) {
+    const sets = columns.map((c) => `"${c}" = "${c}" + make_interval(secs => ${shiftSeconds})`).join(", ");
+    await db.exec(`UPDATE "${table}" SET ${sets}`);
+  }
 }

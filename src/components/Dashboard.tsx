@@ -127,7 +127,7 @@ export function Dashboard() {
           <span aria-hidden="true">🧪</span>
           <span>
             <strong>Demo data.</strong> Every topic, metric and link on this page is simulated (DEMO_MODE=true) so you can see how the algorithm behaves. Nothing here reflects real
-            trends. Set <code>DEMO_MODE=false</code> to show live data only.
+            trends; the simulated timeline is re-anchored to the current time. Set <code>DEMO_MODE=false</code> to show live data only.
           </span>
         </div>
       )}

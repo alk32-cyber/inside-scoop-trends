@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { getDb, type Db } from "../db";
+import { getDb, isEphemeralDb, type Db } from "../db";
 import { categories, fallbackCategory, providerSchedule, sourceProfiles } from "../config";
 import { providers } from "../providers";
 import { llmConfigured } from "../analysis/generate";
@@ -415,6 +415,7 @@ export async function systemStatus(opts: { db?: Db; demo?: boolean; env?: Record
     scoring: { topicsScored: scores?.n ?? 0, lastScoredAt: scores?.latest ? new Date(scores.latest).toISOString() : null },
     analysis: { llmConfigured: llmConfigured(env), model: env.ANALYSIS_MODEL ?? "claude-opus-5-5" },
     embeddings: { configured: Boolean(env.VOYAGE_API_KEY) },
-    database: env.DATABASE_URL ? "postgres" : "pglite (local file)",
+    database: env.DATABASE_URL ? "postgres" : isEphemeralDb(env) ? "in-memory (not persistent — set DATABASE_URL)" : "pglite (local file)",
+    persistent: !isEphemeralDb(env),
   };
 }

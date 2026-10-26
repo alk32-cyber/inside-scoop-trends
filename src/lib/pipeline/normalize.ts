@@ -1,7 +1,7 @@
 import type { Db } from "../db";
 import { curatedTopics } from "../config";
 import { assignCategory, candidateSupport, matchCurated, selectTopics, shouldMerge, type ItemForGrouping } from "../normalize/grouping";
-import { canonicalKey, slugify, surfaceForm } from "../normalize/text";
+import { canonicalKey, isValidTopicKey, slugify, surfaceForm } from "../normalize/text";
 import { embedTexts, embeddingsConfigured } from "../normalize/embeddings";
 
 const LOOKBACK_DAYS = 7;
@@ -62,6 +62,7 @@ export interface NormalizeResult {
   topicsCreated: string[];
   topicsActivated: number;
   merges: Array<{ from: string; into: string }>;
+  retired: string[];
   touchedTopicIds: string[];
 }
 
@@ -82,7 +83,7 @@ export async function normalizeRecent(db: Db, opts: { now?: Date; isDemo?: boole
       WHERE is_demo = $1 AND COALESCE(published_at, first_collected_at) > $2`,
     [isDemo, new Date(now.getTime() - LOOKBACK_DAYS * 86400_000)],
   );
-  const result: NormalizeResult = { itemsScanned: items.length, linksCreated: 0, topicsCreated: [], topicsActivated: 0, merges: [], touchedTopicIds: [] };
+  const result: NormalizeResult = { itemsScanned: items.length, linksCreated: 0, topicsCreated: [], topicsActivated: 0, merges: [], retired: [], touchedTopicIds: [] };
   if (items.length === 0) return result;
 
   const touched = new Set<string>();
@@ -140,6 +141,21 @@ export async function normalizeRecent(db: Db, opts: { now?: Date; isDemo?: boole
       result.topicsCreated.push(topicId);
     }
     for (const itemId of s.itemIds) await link(topicId, itemId, "extracted", s.phrase);
+  }
+
+  // Retire extracted topics whose key is no longer valid under the current rules (e.g. a bare
+  // amount like "$100", or a key built by an older singularizer). Still-supported phrases are
+  // recreated under their correct key by the extraction above.
+  const extracted = await db.query<{ id: string; name: string; canonical_key: string }>(
+    "SELECT id, name, canonical_key FROM topics WHERE origin IN ('extracted', 'demo') AND status IN ('candidate', 'active') AND is_demo = $1 AND canonical_key NOT LIKE 'demo-config:%'",
+    [isDemo],
+  );
+  for (const t of extracted) {
+    const stored = t.canonical_key.replace(/^demo:/, "");
+    if (!isValidTopicKey(stored) || canonicalKey(t.name) !== stored) {
+      await db.query("UPDATE topics SET status = 'ignored', updated_at = $2 WHERE id = $1", [t.id, now]);
+      result.retired.push(t.id);
+    }
   }
 
   // Activate topics with recent evidence; record when they were last seen.

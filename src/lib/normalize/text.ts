@@ -71,8 +71,11 @@ export function normalizeText(s: string): string {
 }
 
 /** Very small English singularizer, enough to fold "side hustles" -> "side hustle". */
+/** Words whose plural and singular are the same (or that only look plural). */
+const INVARIANT = new Set(["series", "species", "news", "means", "headquarters", "sales", "analytics", "economics", "politics", "ethics", "logistics", "graphics", "physics"]);
+
 export function singularize(word: string): string {
-  if (word.length <= 3) return word;
+  if (word.length <= 3 || INVARIANT.has(word)) return word;
   if (/(ss|us|is|ics|sis)$/.test(word)) return word;
   if (word.endsWith("sses")) return word.slice(0, -2);
   if (word.endsWith("ies") && word.length > 4) return word.slice(0, -3) + "y";
@@ -105,6 +108,21 @@ export function jaccard(a: Set<string>, b: Set<string>): number {
   return inter / (a.size + b.size - inter);
 }
 
+/** Amounts and bare numbers ("$100", "1b", "000", "30%") are never topics on their own. */
+const NUMERIC_TOKEN = /^\$?\d[\d.,]*(k|m|b|bn|x|%)?$/;
+
+/** Whether a canonical key may become a topic (shared by extraction and the cleanup pass). */
+export function isValidTopicKey(key: string): boolean {
+  if (!key) return false;
+  const toks = key.split(" ").filter(Boolean);
+  if (toks.length === 0) return false;
+  // A phrase may contain an amount ("Series A $5m round") but not start or end with one ("led by $1b").
+  if (toks[0].startsWith("$") || toks[toks.length - 1].startsWith("$")) return false;
+  if (toks.length === 1 && (GENERIC_SINGLE.has(toks[0]) || STOPWORDS.has(toks[0]) || toks[0].length < 3)) return false;
+  if (toks.every((t) => STOPWORDS.has(t) || GENERIC_SINGLE.has(t) || NUMERIC_TOKEN.test(t))) return false;
+  return true;
+}
+
 export interface Candidate {
   /** Display form (original casing from the first occurrence). */
   phrase: string;
@@ -127,10 +145,7 @@ export function extractCandidates(text: string, maxNgram = 3): Candidate[] {
   const out = new Map<string, Candidate>();
   const add = (phrase: string, kind: Candidate["kind"]) => {
     const key = canonicalKey(phrase);
-    if (!key) return;
-    const toks = key.split(" ");
-    if (toks.length === 1 && (GENERIC_SINGLE.has(toks[0]) || STOPWORDS.has(toks[0]) || toks[0].length < 3)) return;
-    if (toks.every((t) => STOPWORDS.has(t) || GENERIC_SINGLE.has(t))) return;
+    if (!isValidTopicKey(key)) return;
     const existing = out.get(key);
     if (!existing || (existing.kind === "ngram" && kind === "entity")) out.set(key, { phrase: phrase.trim(), key, kind });
   };

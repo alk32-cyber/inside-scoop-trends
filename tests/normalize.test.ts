@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { assignCategory, assignStoryKey, candidateSupport, matchCurated, selectTopics, shouldMerge } from "@/lib/normalize/grouping";
-import { canonicalKey, canonicalizeUrl, extractCandidates, surfaceForm, titleFingerprint } from "@/lib/normalize/text";
+import { canonicalKey, canonicalizeUrl, extractCandidates, isValidTopicKey, surfaceForm, titleFingerprint } from "@/lib/normalize/text";
 
 describe("canonical keys and aliases", () => {
   it("folds capitalization, punctuation, plurals and coverage words into one key", () => {
@@ -45,6 +45,15 @@ describe("candidate extraction", () => {
     expect(keys).toContain("vending machine business");
     expect(keys).not.toContain("business");
     expect(keys).not.toContain("why");
+  });
+
+  it("never turns amounts or bare numbers into topics, and keeps invariant plurals intact", () => {
+    for (const p of ["$100", "$1B", "000", "$1,000", "30%", "led by $1b", "$100m series"]) expect(isValidTopicKey(canonicalKey(p))).toBe(false);
+    for (const p of ["Series A", "Anthropic IPO", "Q3 earnings", "iPhone 17"]) expect(isValidTopicKey(canonicalKey(p))).toBe(true);
+    expect(canonicalKey("Series")).toBe("series");
+    expect(canonicalKey("Endangered species")).toBe("endangered species");
+    const keys = extractCandidates("Startup raises $100M Series B led by $1B fund").map((c) => c.key);
+    expect(keys.some((k) => k.startsWith("$") || k.endsWith("$1b"))).toBe(false);
   });
 
   it("only lets proper nouns become single-word topics", () => {

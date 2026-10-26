@@ -10,8 +10,8 @@ export function Nav() {
   );
   return (
     <nav className="nav" aria-label="Main">
-      {link("/", "Trends")}
-      {link("/status", "System status")}
+      {link("/", "Topics")}
+      {link("/advanced", "Nerd view")}
     </nav>
   );
 }

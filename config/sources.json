@@ -46,17 +46,26 @@
       "\"gen z\" business"
     ],
     "rssFeeds": [
+      "https://www.cnbc.com/id/44877279/device/rss/rss.html",
+      "https://www.tubefilter.com/feed/",
+      "https://www.netinfluencer.com/feed/",
+      "https://www.dexerto.com/feed/",
+      "https://www.socialmediatoday.com/feeds/news/",
+      "https://www.gamesindustry.biz/feed",
+      "https://www.morningbrew.com/feed",
+      "https://feeds.businessinsider.com/custom/all",
+      "https://www.engadget.com/rss.xml",
+      "https://www.theverge.com/rss/index.xml",
       "https://techcrunch.com/category/startups/feed/",
       "https://www.entrepreneur.com/latest.rss",
-      "https://www.fastcompany.com/latest/rss",
-      "https://feeds.npr.org/1006/rss.xml",
-      "https://www.cnbc.com/id/10001147/device/rss/rss.html",
-      "https://news.crunchbase.com/feed/",
-      "https://www.theverge.com/rss/index.xml"
+      "https://hypebeast.com/feed",
+      "https://www.billboard.com/feed/",
+      "https://www.sportico.com/feed/",
+      "https://www.teenvogue.com/feed/rss"
     ],
     "lookbackHours": 48,
     "pageSize": 50,
-    "_rssNote": "Publisher-provided public RSS feeds (no key needed). Only headline, link, time and a short description are stored, always linking back to the publisher. Check each publisher's terms before commercial use; remove any feed you don't want."
+    "_rssNote": "Publisher RSS feeds chosen for a teen business podcast: young money (CNBC Make It), creators (Tubefilter, NetInfluencer, Dexerto), social apps, gaming business, brands/sneakers, music and sports business, startups and tech. Verified reachable from Vercel. Only headline, link, time and a short description are stored."
   },
   "googleTrends": {
     "geo": "US",

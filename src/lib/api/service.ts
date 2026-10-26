@@ -424,3 +424,128 @@ export async function systemStatus(opts: { db?: Db; demo?: boolean; env?: Record
     persistent: !isEphemeralDb(env),
   };
 }
+
+// ---------------- Teen podcast view ----------------
+
+export const PodQuery = z.object({
+  lane: z.string().regex(/^[a-z]+$/).optional(),
+  sort: z.enum(["best", "newest", "rising"]).default("best"),
+  limit: z.coerce.number().int().min(1).max(100).default(50),
+  offset: z.coerce.number().int().min(0).max(10_000).default(0),
+});
+export type PodQuery = z.infer<typeof PodQuery>;
+
+interface PodRow {
+  topic_id: string;
+  name: string;
+  trend_score: number;
+  lifecycle: string;
+  confidence: number;
+  computed_at: Date;
+  stories: number;
+  outlets: number;
+  newest: Date | null;
+  headlines: Array<{ title: string; url: string; author: string | null; published_at: string | null }> | null;
+  payload: StoredAnalysis | null;
+  is_demo: boolean;
+}
+
+/**
+ * Topics ranked for a teen business podcast (best first). Pod scores are computed per
+ * request from the stored trend scores plus each topic's recent headlines.
+ */
+export async function listPodTopics(q: PodQuery, opts: { db?: Db; demo?: boolean; now?: number } = {}) {
+  const { podScore, LANES_PUBLIC, TIERS } = await import("../pod");
+  const db = opts.db ?? (await getDb());
+  const demo = opts.demo ?? isDemoMode();
+  const now = opts.now ?? Date.now();
+  const recent = new Date(now - 72 * 3600_000);
+  const rows = await db.query<PodRow>(
+    `WITH recent_items AS (
+       SELECT l.topic_id, i.story_key, i.title, i.url, i.author, i.provider,
+              COALESCE(i.published_at, i.first_collected_at) AS at
+         FROM topic_source_links l JOIN source_items i ON i.id = l.source_item_id
+        WHERE i.is_demo = $1 AND i.title NOT LIKE '[removed%' AND COALESCE(i.published_at, i.first_collected_at) > $2
+     )
+     SELECT s.topic_id, t.name, s.trend_score, s.lifecycle, s.confidence, s.computed_at, s.is_demo,
+            (SELECT COUNT(DISTINCT r.story_key) FROM recent_items r WHERE r.topic_id = s.topic_id)::int8 AS stories,
+            (SELECT COUNT(DISTINCT COALESCE(r.author, r.provider)) FROM recent_items r WHERE r.topic_id = s.topic_id)::int8 AS outlets,
+            (SELECT MAX(r.at) FROM recent_items r WHERE r.topic_id = s.topic_id) AS newest,
+            (SELECT json_agg(h ORDER BY h.published_at DESC) FROM (
+               SELECT * FROM (
+                 SELECT DISTINCT ON (r.story_key) r.title, r.url, r.author, r.at AS published_at
+                   FROM recent_items r WHERE r.topic_id = s.topic_id ORDER BY r.story_key, r.at DESC
+               ) d ORDER BY d.published_at DESC LIMIT 5
+             ) h) AS headlines,
+            (SELECT c.payload FROM content_recommendations c WHERE c.topic_id = s.topic_id ORDER BY c.data_timestamp DESC, c.generated_at DESC LIMIT 1) AS payload
+       FROM trend_scores s JOIN topics t ON t.id = s.topic_id
+      WHERE s.is_demo = $1 AND t.status = 'active'
+      LIMIT 1000`,
+    [demo, recent],
+  );
+
+  const scored = rows.map((r) => {
+    const headlines = (r.headlines ?? []).map((h) => ({
+      title: h.title,
+      url: h.url,
+      outlet: h.author,
+      publishedAt: h.published_at ? new Date(h.published_at).toISOString() : null,
+    }));
+    const newestAt = r.newest ? new Date(r.newest).toISOString() : null;
+    const pod = podScore({ name: r.name, headlines, stories: Number(r.stories), outlets: Number(r.outlets), trendScore: r.trend_score, lifecycle: r.lifecycle, newestAt }, now);
+    const llm = r.payload?.method === "llm" ? r.payload : null;
+    return {
+      id: r.topic_id,
+      name: r.name,
+      lane: pod.lane,
+      podScore: pod.podScore,
+      tier: pod.tier,
+      tierLabel: TIERS[pod.tier].label,
+      tierEmoji: TIERS[pod.tier].emoji,
+      reasons: pod.reasons,
+      // Prefer evidence-grounded questions from the language model when they exist.
+      starters: llm?.interview_questions?.length ? llm.interview_questions.slice(0, 3) : pod.starters,
+      startersSource: llm ? "ai" : "template",
+      summary: llm?.evidence_sufficient ? llm.why_rising : null,
+      headlines,
+      stories: Number(r.stories),
+      outlets: Number(r.outlets),
+      newestAt,
+      heavy: pod.heavy,
+      nerd: {
+        trendScore: r.trend_score,
+        lifecycle: r.lifecycle,
+        confidence: r.confidence,
+        teenAppeal: pod.appeal,
+        coverage: pod.coverage,
+        freshness: pod.freshness,
+      },
+      updatedAt: new Date(r.computed_at).toISOString(),
+      isDemo: r.is_demo,
+    };
+  });
+
+  const filtered = q.lane ? scored.filter((t) => t.lane.id === q.lane) : scored;
+  const sorted = [...filtered].sort((a, b) => {
+    if (q.sort === "newest") return (Date.parse(b.newestAt ?? "0") || 0) - (Date.parse(a.newestAt ?? "0") || 0) || b.podScore - a.podScore;
+    if (q.sort === "rising") return b.nerd.trendScore - a.nerd.trendScore || b.podScore - a.podScore;
+    return b.podScore - a.podScore || b.nerd.trendScore - a.nerd.trendScore || a.name.localeCompare(b.name);
+  });
+  const laneCounts = Object.fromEntries(LANES_PUBLIC.map((l) => [l.id, scored.filter((t) => t.lane.id === l.id).length]));
+  const lastUpdated = rows.reduce<string | null>((m, r) => {
+    const t = new Date(r.computed_at).toISOString();
+    return !m || t > m ? t : m;
+  }, null);
+  return {
+    mode: demo ? ("demo" as const) : ("live" as const),
+    sort: q.sort,
+    lane: q.lane ?? null,
+    lanes: LANES_PUBLIC.map((l) => ({ ...l, count: laneCounts[l.id] ?? 0 })),
+    total: sorted.length,
+    limit: q.limit,
+    offset: q.offset,
+    lastUpdated,
+    items: sorted.slice(q.offset, q.offset + q.limit),
+  };
+}
+export type PodTopic = Awaited<ReturnType<typeof listPodTopics>>["items"][number];

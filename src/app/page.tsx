@@ -1,5 +1,5 @@
-import { Dashboard } from "@/components/Dashboard";
+import { PodBoard } from "@/components/PodBoard";
 
 export default function Home() {
-  return <Dashboard />;
+  return <PodBoard />;
 }

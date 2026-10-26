@@ -1,5 +1,12 @@
 # Inside Scoop — Trending Topic Intelligence
 
+> **Homepage = Topic Finder.** Topics are ranked best → worst by a **Pod Score** (`src/lib/pod.ts`):
+> teen appeal 40% (lanes in `config/teen.json`: creators, gaming, money, AI & apps, brands, music/sports, startups) +
+> coverage 25% (distinct stories and outlets, last 72h) + buzz 20% (the trend score below) + freshness 15%.
+> Heavy news (war, lawsuits, politics) is pushed down and labelled; single-story topics never rank above "Maybe".
+> Each card shows the real headline, why it's a good pick and three questions to ask on the mic.
+> The numbers-first dashboard lives at `/advanced`; the API is `GET /api/topics?lane=&sort=best|newest|rising`.
+
 A trend discovery and ranking engine for **Inside Scoop**, a Gen Z entrepreneurship and business podcast. It collects signals from YouTube, Reddit, news and Google Trends, groups them into canonical topics, measures how attention **changes over time**, explains what is driving it (from the evidence only), and suggests episode angles.
 
 It ranks topics by measured momentum, not by a static list of popular subjects. A big but flat topic loses to a smaller one that is accelerating across independent platforms.

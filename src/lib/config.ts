@@ -47,10 +47,15 @@ export const sourceProfiles: Record<string, SourceProfile> = {
   demo_google_trends: { ...baseProfiles.google_trends, platform: "demo_google_trends" },
 };
 
-export function sourceProfile(source: string): SourceProfile {
+/**
+ * Profile for a source. `<SOURCE>_STALE_AFTER_HOURS` (e.g. NEWS_STALE_AFTER_HOURS=30) overrides the
+ * staleness threshold, for deployments that can only collect once a day.
+ */
+export function sourceProfile(source: string, env: Record<string, string | undefined> = process.env): SourceProfile {
   const p = sourceProfiles[source];
   if (!p) throw new Error(`Unknown source "${source}"`);
-  return p;
+  const override = Number(env[`${source.replace(/^demo_/, "").toUpperCase()}_STALE_AFTER_HOURS`]);
+  return Number.isFinite(override) && override > 0 ? { ...p, staleAfterHours: override } : p;
 }
 
 export interface ScoringConfig {

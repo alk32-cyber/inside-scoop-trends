@@ -104,34 +104,55 @@ const SNAPSHOT_TABLES = [
   "ingestion_runs",
 ];
 
+export type StorageMode = "postgres" | "blob" | "ephemeral" | "local";
+
 /**
- * Serverless hosts (Vercel) have no persistent writable disk. Without DATABASE_URL the app
- * runs on an in-memory database there: the demo snapshot in demo mode, otherwise empty.
+ * Where data lives:
+ *  - postgres:  DATABASE_URL is set (recommended for production)
+ *  - blob:      on Vercel without Postgres but with a Blob store (BLOB_READ_WRITE_TOKEN): an
+ *               in-memory database loaded from, and saved back to, a private Blob snapshot
+ *  - ephemeral: on Vercel with neither: in-memory only (demo snapshot in demo mode)
+ *  - local:     embedded PGlite files in ./.data (development)
  */
-export function isEphemeralDb(env: Record<string, string | undefined> = process.env): boolean {
-  return !env.DATABASE_URL && Boolean(env.VERCEL);
+export function storageMode(env: Record<string, string | undefined> = process.env): StorageMode {
+  if (env.DATABASE_URL) return "postgres";
+  if (env.VERCEL && env.BLOB_READ_WRITE_TOKEN) return "blob";
+  if (env.VERCEL) return "ephemeral";
+  return "local";
 }
 
-/** Exports demo rows (is_demo or belonging to demo topics/items) as gzipped JSON. */
-export async function exportDemoSnapshot(db: Db): Promise<Buffer> {
+/** True when nothing written would survive the serverless instance. */
+export function isEphemeralDb(env: Record<string, string | undefined> = process.env): boolean {
+  return storageMode(env) === "ephemeral";
+}
+
+function isDemoEnv(env: Record<string, string | undefined> = process.env): boolean {
+  return env.DEMO_MODE === "true" || env.DEMO_MODE === "1";
+}
+
+/** Exports the demo (isDemo=true) or live (false) rows of every table as gzipped JSON. */
+export async function exportSnapshot(db: Db, isDemo: boolean): Promise<Buffer> {
   const { gzipSync } = await import("node:zlib");
+  const flag = isDemo ? "TRUE" : "FALSE";
   const filters: Record<string, string> = {
-    topics: "is_demo",
-    topic_aliases: "topic_id IN (SELECT id FROM topics WHERE is_demo)",
-    source_items: "is_demo",
-    item_metric_snapshots: "item_id IN (SELECT id FROM source_items WHERE is_demo)",
-    topic_source_links: "topic_id IN (SELECT id FROM topics WHERE is_demo)",
+    topic_aliases: `topic_id IN (SELECT id FROM topics WHERE is_demo = ${flag})`,
+    item_metric_snapshots: `item_id IN (SELECT id FROM source_items WHERE is_demo = ${flag})`,
+    topic_source_links: `topic_id IN (SELECT id FROM topics WHERE is_demo = ${flag})`,
   };
   const out: Record<string, unknown[]> = {};
   for (const t of SNAPSHOT_TABLES) {
-    const [row] = await db.query<{ rows: unknown[] | null }>(`SELECT json_agg(x) AS rows FROM "${t}" x WHERE ${filters[t] ?? "is_demo"}`);
+    const [row] = await db.query<{ rows: unknown[] | null }>(`SELECT json_agg(x) AS rows FROM "${t}" x WHERE ${filters[t] ?? `is_demo = ${flag}`}`);
     out[t] = row?.rows ?? [];
   }
   return gzipSync(JSON.stringify(out));
 }
 
-/** Loads a demo snapshot with one bulk insert per table, then fixes sequences. */
-export async function importDemoSnapshot(db: Db, gz: Buffer): Promise<void> {
+export function exportDemoSnapshot(db: Db): Promise<Buffer> {
+  return exportSnapshot(db, true);
+}
+
+/** Loads a snapshot with one bulk insert per table, then fixes sequences. */
+export async function importSnapshot(db: Db, gz: Buffer): Promise<void> {
   const { gunzipSync } = await import("node:zlib");
   const data = JSON.parse(gunzipSync(gz).toString("utf8")) as Record<string, unknown[]>;
   for (const t of SNAPSHOT_TABLES) {
@@ -147,28 +168,63 @@ export async function importDemoSnapshot(db: Db, gz: Buffer): Promise<void> {
   }
 }
 
-/** Opens a database from the environment: DATABASE_URL (Postgres) or an embedded PGlite directory. */
+/** Opens a database from the environment (see storageMode). */
 export async function openDb(opts: { inMemory?: boolean } = {}): Promise<Db> {
   if (opts.inMemory) return createPgliteDb();
-  const url = process.env.DATABASE_URL;
-  if (url) return createPgDb(url);
-  if (isEphemeralDb()) {
-    const db = await createPgliteDb();
-    const demo = process.env.DEMO_MODE === "true" || process.env.DEMO_MODE === "1";
-    if (demo && fs.existsSync(DEMO_SNAPSHOT_PATH)) {
-      await migrate(db);
-      await importDemoSnapshot(db, fs.readFileSync(DEMO_SNAPSHOT_PATH));
+  const mode = storageMode();
+  if (mode === "postgres") return createPgDb(process.env.DATABASE_URL!);
+  if (mode === "local") return createPgliteDb(process.env.PGLITE_DATA_DIR ?? path.join(process.cwd(), ".data", "pglite"));
+
+  const db = await createPgliteDb();
+  await migrate(db);
+  if (isDemoEnv()) {
+    if (fs.existsSync(DEMO_SNAPSHOT_PATH)) {
+      await importSnapshot(db, fs.readFileSync(DEMO_SNAPSHOT_PATH));
       await reanchorDemo(db);
     }
-    return db;
+  } else if (mode === "blob") {
+    const { loadLiveBlob } = await import("./blobStore");
+    const snap = await loadLiveBlob();
+    if (snap) await importSnapshot(db, snap.buf);
+    globalForDb.__blobEtag = snap?.etag ?? null;
   }
-  return createPgliteDb(process.env.PGLITE_DATA_DIR ?? path.join(process.cwd(), ".data", "pglite"));
+  globalForDb.__loadedAt = Date.now();
+  return db;
 }
 
-const globalForDb = globalThis as unknown as { __trendDb?: Promise<Db> };
+const globalForDb = globalThis as unknown as { __trendDb?: Promise<Db>; __blobEtag?: string | null; __loadedAt?: number; __checking?: boolean };
 
-/** Process-wide singleton used by API routes and scripts. Migrations run on first open. */
-export function getDb(): Promise<Db> {
+/** How often a Blob-backed instance checks for a newer snapshot written by the scheduled job. */
+const BLOB_REFRESH_MS = 120_000;
+
+/**
+ * Process-wide database used by API routes and scripts. Migrations run on first open.
+ * In Blob mode, a newer snapshot (different ETag) replaces the in-memory copy; pass
+ * `fresh: true` to force a reload (the ingestion job does this before writing).
+ */
+export async function getDb(opts: { fresh?: boolean } = {}): Promise<Db> {
+  if (storageMode() === "blob" && !isDemoEnv() && globalForDb.__trendDb) {
+    const stale = opts.fresh || Date.now() - (globalForDb.__loadedAt ?? 0) > BLOB_REFRESH_MS;
+    if (stale && !globalForDb.__checking) {
+      globalForDb.__checking = true;
+      try {
+        const { headLiveEtag } = await import("./blobStore");
+        const etag = opts.fresh ? null : await headLiveEtag();
+        if (opts.fresh || etag !== globalForDb.__blobEtag) {
+          const old = globalForDb.__trendDb;
+          globalForDb.__trendDb = undefined;
+          // Let in-flight queries on the old copy finish before closing it.
+          setTimeout(() => old.then((d) => d.close()).catch(() => {}), 30_000);
+        } else {
+          globalForDb.__loadedAt = Date.now();
+        }
+      } catch (err) {
+        console.error("[db] blob freshness check failed:", (err as Error).message);
+      } finally {
+        globalForDb.__checking = false;
+      }
+    }
+  }
   if (!globalForDb.__trendDb) {
     globalForDb.__trendDb = (async () => {
       const db = await openDb();
@@ -180,6 +236,24 @@ export function getDb(): Promise<Db> {
     });
   }
   return globalForDb.__trendDb;
+}
+
+/**
+ * Blob mode only: prunes old rows and saves the live database back to Blob. The write is
+ * conditional on the ETag that was loaded, so a concurrent writer is never overwritten.
+ */
+export async function persistLive(db: Db, now = new Date()): Promise<{ bytes: number } | null> {
+  if (storageMode() !== "blob") return null;
+  const day = 86400_000;
+  await db.query("DELETE FROM source_items WHERE is_demo = FALSE AND COALESCE(published_at, first_collected_at) < $1", [new Date(now.getTime() - 10 * day)]);
+  await db.query("DELETE FROM observations WHERE is_demo = FALSE AND observed_at < $1", [new Date(now.getTime() - 14 * day)]);
+  await db.query("DELETE FROM trend_score_history WHERE is_demo = FALSE AND as_of < $1", [new Date(now.getTime() - 30 * day)]);
+  await db.query("DELETE FROM ingestion_runs WHERE is_demo = FALSE AND started_at < $1", [new Date(now.getTime() - 30 * day)]);
+  const buf = await exportSnapshot(db, false);
+  const { saveLiveBlob } = await import("./blobStore");
+  globalForDb.__blobEtag = await saveLiveBlob(buf, globalForDb.__blobEtag ?? null);
+  globalForDb.__loadedAt = Date.now();
+  return { bytes: buf.length };
 }
 
 export function migrationsDir(): string {

@@ -37,7 +37,16 @@ npm run ingest -- --force             # collect → normalize → derive → sco
 npm run dev                           # DEMO_MODE=false shows live data only
 ```
 
-Without `DATABASE_URL`, an embedded Postgres (PGlite) is stored in `./.data/pglite`. Set `DATABASE_URL` to use any Postgres 14+ (required on Vercel, whose filesystem is not persistent). Migrations run automatically on first connection, or explicitly with `npm run db:migrate`.
+**Storage modes** (picked automatically, see `storageMode()` in `src/lib/db/index.ts`):
+
+| Mode | When | Notes |
+|---|---|---|
+| Postgres | `DATABASE_URL` set | Recommended for production (Neon, Supabase, etc.) |
+| Vercel Blob | on Vercel, no `DATABASE_URL`, `BLOB_READ_WRITE_TOKEN` set (connect a Blob store to the project) | The live database is an in-memory copy loaded from a private Blob snapshot; each scheduled run reloads it, collects, scores and saves it back (ETag-guarded). Rows older than 10–30 days are pruned. Fine for one show's dashboard; move to Postgres if data grows. |
+| In-memory | on Vercel with neither | Demo only; live ingestion refuses to run |
+| Local PGlite | anywhere else | Files in `./.data/pglite` |
+
+Without `DATABASE_URL` locally, an embedded Postgres (PGlite) is stored in `./.data/pglite`. Set `DATABASE_URL` to use any Postgres 14+ (required on Vercel, whose filesystem is not persistent). Migrations run automatically on first connection, or explicitly with `npm run db:migrate`.
 
 | Command | What it does |
 |---|---|
@@ -212,7 +221,9 @@ A provider is reported as **connected only after a successful collection is reco
 3. Uses the OAuth client-credentials flow, staying under 100 requests/minute. **Commercial use requires Reddit's approval** under its Data API terms; check before going live.
 4. Data handling: only titles, short snippets and public counters are stored. Posts later reported as removed or deleted have their stored text purged on the next refresh.
 
-### News — `NEWSAPI_KEY` and/or `NEWS_RSS_FEEDS`
+### News — `NEWSAPI_KEY` and/or RSS feeds
+By default, public publisher RSS feeds (TechCrunch Startups, Entrepreneur, Fast Company, NPR Business, CNBC Small Business, Crunchbase News, The Verge) are collected with no key. Edit `config/sources.json` → `news.rssFeeds`, or add more with `NEWS_RSS_FEEDS`. On a once-a-day schedule, set `NEWS_STALE_AFTER_HOURS=30` and `STALE_AFTER_HOURS=30` so daily data isn't flagged stale.
+
 - **NewsAPI.org**: get a key at https://newsapi.org. The free Developer plan is for development only and delays articles, so production needs a paid plan. Queries are in `config/sources.json`.
 - **RSS**: add comma-separated feed URLs you're allowed to use (check each publisher's terms). Only headline, link, time and a short description are stored.
 
@@ -297,7 +308,7 @@ It writes a JSON report to `.data/`. It never changes the live configuration. Wa
 | Scheduling: Vercel cron route, self-hosted scheduler, budgets, retries | **Operational** (code paths tested; not deployed) |
 | YouTube adapter | **Awaiting credentials** (`YOUTUBE_API_KEY`); not tested against the live API |
 | Reddit adapter | **Awaiting credentials and Reddit approval for commercial use**; not tested live |
-| News adapter (NewsAPI / RSS) | **Awaiting credentials or feed list**; RSS parser unit-tested, live feeds not tested |
+| News adapter (NewsAPI / RSS) | **Keyless RSS enabled by default** (7 publisher feeds in `config/sources.json`); parser unit-tested; feeds verified only once the first deployed run succeeds. NewsAPI awaits `NEWSAPI_KEY` |
 | Google Trends adapter (SerpApi) | **Awaiting credentials** (`SERPAPI_KEY`); not tested live |
 | AI analysis with Claude | **Awaiting `ANTHROPIC_API_KEY`**; request/validation path tested with a mocked client; templates used until then |
 | Embedding-based merging (Voyage) | **Optional, awaiting `VOYAGE_API_KEY`**; not tested live |

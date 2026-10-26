@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import path from "node:path";
-import { migrate, openDb, type Db } from "@/lib/db";
+import { exportSnapshot, importSnapshot, migrate, openDb, type Db } from "@/lib/db";
 import { deriveObservations } from "@/lib/pipeline/derive";
 import { ingestProvider, storeItems } from "@/lib/pipeline/ingest";
 import { normalizeRecent } from "@/lib/pipeline/normalize";
@@ -100,5 +100,27 @@ describe("provider availability", () => {
     expect(demo.items).toHaveLength(0);
     expect(() => TrendsQuery.parse({ limit: "1000" })).toThrow();
     expect(() => TrendsQuery.parse({ lifecycle: "viral" })).toThrow();
+  });
+});
+
+describe("live snapshot (Blob storage mode)", () => {
+  it("round-trips the live database exactly and keeps sequences usable", async () => {
+    const counts = async (d: Db) =>
+      d.query<{ t: string; n: number }>(
+        `SELECT 'items' AS t, COUNT(*)::int8 AS n FROM source_items UNION ALL SELECT 'obs', COUNT(*)::int8 FROM observations
+         UNION ALL SELECT 'scores', COUNT(*)::int8 FROM trend_scores UNION ALL SELECT 'runs', COUNT(*)::int8 FROM ingestion_runs
+         UNION ALL SELECT 'snaps', COUNT(*)::int8 FROM item_metric_snapshots ORDER BY 1`,
+      );
+    const gz = await exportSnapshot(db, false);
+    const copy = await openDb({ inMemory: true });
+    await migrate(copy, path.join(process.cwd(), "db", "migrations"));
+    await importSnapshot(copy, gz);
+    expect(await counts(copy)).toEqual(await counts(db));
+    // New rows get fresh ids after restore (sequences were advanced).
+    await storeItems(copy, "youtube", [video("v9", "Another micro SaaS story", 1, 10)], NOW);
+    const [{ n }] = await copy.query<{ n: number }>("SELECT COUNT(DISTINCT id)::int8 AS n FROM source_items");
+    const [{ m }] = await copy.query<{ m: number }>("SELECT COUNT(*)::int8 AS m FROM source_items");
+    expect(n).toBe(m);
+    await copy.close();
   });
 });

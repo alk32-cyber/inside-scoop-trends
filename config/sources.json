@@ -1,7 +1,16 @@
 {
   "_comment": "What each provider is asked for. Edit freely; every entry costs API quota (see README 'Quota budgeting').",
   "youtube": {
-    "searchQueries": ["entrepreneur", "startup founder", "side hustle", "small business", "business breakdown", "AI startup", "marketing strategy", "personal finance gen z"],
+    "searchQueries": [
+      "entrepreneur",
+      "startup founder",
+      "side hustle",
+      "small business",
+      "business breakdown",
+      "AI startup",
+      "marketing strategy",
+      "personal finance gen z"
+    ],
     "regionCode": "US",
     "relevanceLanguage": "en",
     "lookbackHours": 48,
@@ -9,17 +18,45 @@
     "refreshTrackedForDays": 7
   },
   "reddit": {
-    "subreddits": ["Entrepreneur", "startups", "smallbusiness", "marketing", "SideProject", "personalfinance", "GenZ", "technology", "business"],
-    "listings": ["new", "hot"],
+    "subreddits": [
+      "Entrepreneur",
+      "startups",
+      "smallbusiness",
+      "marketing",
+      "SideProject",
+      "personalfinance",
+      "GenZ",
+      "technology",
+      "business"
+    ],
+    "listings": [
+      "new",
+      "hot"
+    ],
     "limitPerListing": 50,
     "refreshTrackedForDays": 3
   },
   "news": {
     "provider": "newsapi",
-    "queries": ["startup", "entrepreneur", "small business", "venture capital", "\"gen z\" business"],
-    "rssFeeds": [],
+    "queries": [
+      "startup",
+      "entrepreneur",
+      "small business",
+      "venture capital",
+      "\"gen z\" business"
+    ],
+    "rssFeeds": [
+      "https://techcrunch.com/category/startups/feed/",
+      "https://www.entrepreneur.com/latest.rss",
+      "https://www.fastcompany.com/latest/rss",
+      "https://feeds.npr.org/1006/rss.xml",
+      "https://www.cnbc.com/id/10001147/device/rss/rss.html",
+      "https://news.crunchbase.com/feed/",
+      "https://www.theverge.com/rss/index.xml"
+    ],
     "lookbackHours": 48,
-    "pageSize": 50
+    "pageSize": 50,
+    "_rssNote": "Publisher-provided public RSS feeds (no key needed). Only headline, link, time and a short description are stored, always linking back to the publisher. Check each publisher's terms before commercial use; remove any feed you don't want."
   },
   "googleTrends": {
     "geo": "US",

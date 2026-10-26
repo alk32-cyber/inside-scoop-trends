@@ -455,7 +455,7 @@ interface PodRow {
  * request from the stored trend scores plus each topic's recent headlines.
  */
 export async function listPodTopics(q: PodQuery, opts: { db?: Db; demo?: boolean; now?: number } = {}) {
-  const { podScore, LANES_PUBLIC, TIERS } = await import("../pod");
+  const { podScore, LANES_PUBLIC, TIERS, dropOverlapping } = await import("../pod");
   const db = opts.db ?? (await getDb());
   const demo = opts.demo ?? isDemoMode();
   const now = opts.now ?? Date.now();
@@ -525,13 +525,17 @@ export async function listPodTopics(q: PodQuery, opts: { db?: Db; demo?: boolean
     };
   });
 
-  const filtered = q.lane ? scored.filter((t) => t.lane.id === q.lane) : scored;
+  // Nothing to talk about without a current story, and one story should show up once, under its best name.
+  const talkable = dropOverlapping(
+    scored.filter((t) => t.stories > 0).sort((a, b) => b.podScore - a.podScore || b.stories - a.stories),
+  );
+  const filtered = q.lane ? talkable.filter((t) => t.lane.id === q.lane) : talkable;
   const sorted = [...filtered].sort((a, b) => {
     if (q.sort === "newest") return (Date.parse(b.newestAt ?? "0") || 0) - (Date.parse(a.newestAt ?? "0") || 0) || b.podScore - a.podScore;
     if (q.sort === "rising") return b.nerd.trendScore - a.nerd.trendScore || b.podScore - a.podScore;
     return b.podScore - a.podScore || b.nerd.trendScore - a.nerd.trendScore || a.name.localeCompare(b.name);
   });
-  const laneCounts = Object.fromEntries(LANES_PUBLIC.map((l) => [l.id, scored.filter((t) => t.lane.id === l.id).length]));
+  const laneCounts = Object.fromEntries(LANES_PUBLIC.map((l) => [l.id, talkable.filter((t) => t.lane.id === l.id).length]));
   const lastUpdated = rows.reduce<string | null>((m, r) => {
     const t = new Date(r.computed_at).toISOString();
     return !m || t > m ? t : m;

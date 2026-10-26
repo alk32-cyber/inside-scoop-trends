@@ -219,3 +219,20 @@ export function starters(name: string, laneId: string): string[] {
     return out.charAt(0).toUpperCase() + out.slice(1);
   });
 }
+
+/**
+ * Removes topics that are really the same story as a better-ranked topic ("Anthropic", "Anthropic IPO", "IPO").
+ * Input must already be sorted best first; a topic is dropped when most of its headlines are already covered.
+ */
+export function dropOverlapping<T extends { headlines: { url: string }[] }>(sortedBest: T[], maxShared = 0.6): T[] {
+  const seen = new Set<string>();
+  const out: T[] = [];
+  for (const t of sortedBest) {
+    const urls = t.headlines.map((h) => h.url);
+    const shared = urls.filter((u) => seen.has(u)).length;
+    if (urls.length > 0 && shared / urls.length >= maxShared) continue;
+    urls.forEach((u) => seen.add(u));
+    out.push(t);
+  }
+  return out;
+}

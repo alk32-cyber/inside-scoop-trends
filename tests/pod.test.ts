@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { coverageScore, inSentence, podScore, starters, teenAppeal, tierFor } from "@/lib/pod";
+import { coverageScore, dropOverlapping, inSentence, podScore, starters, teenAppeal, tierFor } from "@/lib/pod";
 
 const NOW = Date.UTC(2026, 9, 26, 12);
 const iso = (hoursAgo: number) => new Date(NOW - hoursAgo * 3600_000).toISOString();
@@ -66,5 +66,18 @@ describe("conversation starters", () => {
     expect(inSentence("AI agents")).toBe("AI agents");
     expect(starters("Salary negotiation", "money").join(" ")).toContain("about salary negotiation");
     expect(starters("Side hustles", "other")[0].charAt(0)).toBe("E");
+  });
+});
+
+describe("dropOverlapping", () => {
+  it("keeps one card per story, under the best-ranked topic", () => {
+    const h = (u: string) => ({ url: u });
+    const out = dropOverlapping([
+      { id: "anthropic", headlines: [h("a"), h("b"), h("c")] },
+      { id: "anthropic-ipo", headlines: [h("a"), h("c")] },
+      { id: "ipo", headlines: [h("a"), h("b"), h("c"), h("d")] },
+      { id: "apple", headlines: [h("x"), h("a")] },
+    ]);
+    expect(out.map((t) => t.id)).toEqual(["anthropic", "apple"]);
   });
 });

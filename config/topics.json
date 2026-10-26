@@ -1,0 +1,15 @@
+{
+  "_comment": "Curated canonical topics. Extracted phrases that normalize to any alias join the topic. 'requireContext' disambiguates ambiguous names: the alias only matches when at least one context word appears in the same item. 'doNotMergeWith' blocks semantic merges between distinct subjects that look similar.",
+  "topics": [
+    { "id": "ai-agents", "name": "AI agents", "category": "technology", "aliases": ["ai agent", "ai agents", "agentic ai", "autonomous agents"] },
+    { "id": "side-hustles", "name": "Side hustles", "category": "entrepreneurship", "aliases": ["side hustle", "side hustles", "side gig", "side gigs", "side business"] },
+    { "id": "tiktok-shop", "name": "TikTok Shop", "category": "marketing", "aliases": ["tiktok shop", "tik tok shop"], "doNotMergeWith": ["tiktok-ban"] },
+    { "id": "tiktok-ban", "name": "TikTok ban / ownership", "category": "technology", "aliases": ["tiktok ban", "tiktok sale", "tiktok divestiture"], "doNotMergeWith": ["tiktok-shop"] },
+    { "id": "meta-platforms", "name": "Meta (company)", "category": "technology", "aliases": ["meta"], "requireContext": ["zuckerberg", "instagram", "facebook", "threads", "whatsapp", "llama", "stock", "shares", "earnings", "quest", "ray ban", "ai"] },
+    { "id": "apple-vision-pro", "name": "Apple Vision Pro", "category": "technology", "aliases": ["apple vision pro", "vision pro"], "doNotMergeWith": ["apple-pay"] },
+    { "id": "apple-pay", "name": "Apple Pay", "category": "finance_education", "aliases": ["apple pay"], "doNotMergeWith": ["apple-vision-pro"] },
+    { "id": "four-day-work-week", "name": "Four-day work week", "category": "leadership", "aliases": ["four day work week", "4 day work week", "four day week", "4 day week", "32 hour work week"] },
+    { "id": "salary-negotiation", "name": "Salary negotiation", "category": "negotiation", "aliases": ["salary negotiation", "negotiate salary", "negotiating salary", "negotiate your salary", "ask for a raise"] },
+    { "id": "micro-saas", "name": "Micro-SaaS", "category": "startups", "aliases": ["micro saas", "microsaas", "micro saas business"] }
+  ]
+}

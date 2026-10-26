@@ -1,0 +1,29 @@
+{
+  "_comment": "What each provider is asked for. Edit freely; every entry costs API quota (see README 'Quota budgeting').",
+  "youtube": {
+    "searchQueries": ["entrepreneur", "startup founder", "side hustle", "small business", "business breakdown", "AI startup", "marketing strategy", "personal finance gen z"],
+    "regionCode": "US",
+    "relevanceLanguage": "en",
+    "lookbackHours": 48,
+    "maxResultsPerQuery": 25,
+    "refreshTrackedForDays": 7
+  },
+  "reddit": {
+    "subreddits": ["Entrepreneur", "startups", "smallbusiness", "marketing", "SideProject", "personalfinance", "GenZ", "technology", "business"],
+    "listings": ["new", "hot"],
+    "limitPerListing": 50,
+    "refreshTrackedForDays": 3
+  },
+  "news": {
+    "provider": "newsapi",
+    "queries": ["startup", "entrepreneur", "small business", "venture capital", "\"gen z\" business"],
+    "rssFeeds": [],
+    "lookbackHours": 48,
+    "pageSize": 50
+  },
+  "googleTrends": {
+    "geo": "US",
+    "timeframe": "now 7-d",
+    "maxTopicsPerRun": 10
+  }
+}

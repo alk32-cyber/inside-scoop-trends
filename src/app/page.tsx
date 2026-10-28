@@ -1,5 +1,5 @@
-import { PodBoard } from "@/components/PodBoard";
+import { PodApp } from "@/components/PodApp";
 
 export default function Home() {
-  return <PodBoard />;
+  return <PodApp />;
 }

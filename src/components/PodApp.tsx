@@ -33,6 +33,8 @@ interface Topic {
   heavy: boolean;
   nerd: { trendScore: number; lifecycle: string };
   isDemo: boolean;
+  /** Website whose logo stands for the topic (e.g. apple.com for "iPhone Duo"), or null. */
+  logo: string | null;
 }
 interface ApiResponse {
   mode: "live" | "demo";
@@ -112,7 +114,8 @@ const greeting = () => {
   const h = new Date().getHours();
   return h < 5 ? "Up late?" : h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening";
 };
-const LANE_HUES: Record<string, number> = { creators: 330, gaming: 265, money: 145, tech: 210, brands: 25, entertainment: 0, startups: 45, other: 220 };
+const LANE_HUES: Record<string, number> = { creators: 250, gaming: 262, money: 228, tech: 239, brands: 246, entertainment: 256, startups: 232, other: 239 };
+const logoUrl = (domain: string) => `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=128`;
 
 export function PodApp() {
   const [data, setData] = useState<ApiResponse | null>(null);
@@ -180,30 +183,30 @@ export function PodApp() {
   const playlists = useMemo<Playlist[]>(() => {
     const best = [...topics].sort((a, b) => b.podScore - a.podScore);
     const list: Playlist[] = [
-      { id: "top", name: "Top picks this week", emoji: "🔥", blurb: "The strongest topics for the next episode, best first.", hue: 18, topics: best.filter((t) => t.tier === "hot" || t.tier === "solid"), missing: [] },
+      { id: "top", name: "Top picks this week", emoji: "🔥", blurb: "The strongest topics for the next episode, best first.", hue: 239, topics: best.filter((t) => t.tier === "hot" || t.tier === "solid"), missing: [] },
       {
         id: "fresh",
         name: "Fresh drops",
         emoji: "🆕",
         blurb: "Newest stories from the last day.",
-        hue: 190,
+        hue: 226,
         topics: [...topics].filter((t) => t.newestAt && Date.now() - Date.parse(t.newestAt) < 36 * 3600_000).sort((a, b) => Date.parse(b.newestAt!) - Date.parse(a.newestAt!)),
         missing: [],
       },
-      { id: "rising", name: "Rising fast", emoji: "📈", blurb: "Topics growing fastest against their own normal.", hue: 140, topics: [...topics].sort((a, b) => b.nerd.trendScore - a.nerd.trendScore).slice(0, 25), missing: [] },
+      { id: "rising", name: "Rising fast", emoji: "📈", blurb: "Topics growing fastest against their own normal.", hue: 252, topics: [...topics].sort((a, b) => b.nerd.trendScore - a.nerd.trendScore).slice(0, 25), missing: [] },
     ];
     for (const lane of data?.lanes ?? []) {
       const inLane = best.filter((t) => t.lane.id === lane.id);
       if (inLane.length) list.push({ id: `lane-${lane.id}`, name: lane.label, emoji: lane.emoji, blurb: `${lane.label}, ranked best to worst for the pod.`, hue: LANE_HUES[lane.id] ?? 220, topics: inLane, missing: [] });
     }
-    list.push({ id: "all", name: "Everything, best → worst", emoji: "🎧", blurb: "Every topic in the feed, including the ones to skip.", hue: 220, topics: best, missing: [] });
+    list.push({ id: "all", name: "Everything, best → worst", emoji: "🎧", blurb: "Every topic in the feed, including the ones to skip.", hue: 239, topics: best, missing: [] });
     for (const u of mine) {
       list.push({
         id: `my-${u.id}`,
         name: u.name,
         emoji: "🎙️",
         blurb: "Your playlist. Saved in this browser.",
-        hue: 260,
+        hue: 244,
         topics: u.topics.map((s) => byId.get(s.id)).filter((t): t is Topic => !!t),
         missing: u.topics.filter((s) => !byId.has(s.id)),
         user: u,
@@ -215,7 +218,7 @@ export function PodApp() {
         name: shared.name,
         emoji: "🔗",
         blurb: "A playlist someone shared with you.",
-        hue: 300,
+        hue: 258,
         topics: shared.ids.map((id) => byId.get(id)).filter((t): t is Topic => !!t),
         missing: shared.ids.filter((id) => !byId.has(id)).map((id) => ({ id, name: id.replace(/-/g, " "), emoji: "📰" })),
         shared: true,
@@ -305,7 +308,7 @@ export function PodApp() {
       <aside className="sp-side" aria-label="Library">
         <div className="sp-side-box">
           <a className="sp-brand" href="/" onClick={(e) => (e.preventDefault(), go({ kind: "home" }))}>
-            <span className="sp-logo" aria-hidden="true">IS</span>
+            <img className="sp-logo" src="/logo.png" alt="" width={40} height={40} />
             <span>
               <span className="sp-brand-name">Inside Scoop</span>
               <span className="sp-brand-sub">Topic player</span>
@@ -453,17 +456,48 @@ interface Ctx {
 }
 
 // ---------- art ----------
+function Logo({ domain, size }: { domain: string; size: "sm" | "md" | "lg" }) {
+  const [failed, setFailed] = useState(false);
+  if (failed) return null;
+  return (
+    <span className={`sp-logo-tile sp-logo-${size}`}>
+      <img
+        src={logoUrl(domain)}
+        alt=""
+        loading="lazy"
+        referrerPolicy="no-referrer"
+        onError={() => setFailed(true)}
+        // Google answers unknown sites with a tiny generic globe: treat that as "no logo".
+        onLoad={(e) => e.currentTarget.naturalWidth <= 16 && setFailed(true)}
+      />
+    </span>
+  );
+}
 function Cover({ p, size }: { p: Playlist; size: "sm" | "md" | "lg" }) {
+  // Like Spotify: a playlist cover is a mosaic of what's inside, here the logos of its top topics.
+  const logos = [...new Set(p.topics.map((t) => t.logo).filter((d): d is string => !!d))].slice(0, 4);
   return (
     <span className={`sp-cover sp-cover-${size}`} style={{ "--hue": p.hue } as React.CSSProperties} aria-hidden="true">
-      <span className="sp-cover-emoji">{p.emoji}</span>
+      {logos.length === 4 && size !== "sm" ? (
+        <span className="sp-mosaic">
+          {logos.map((d) => (
+            <span key={d}>
+              <Logo domain={d} size="sm" />
+            </span>
+          ))}
+        </span>
+      ) : (
+        <span className="sp-cover-emoji">{p.emoji}</span>
+      )}
+      {size !== "sm" && <span className="sp-cover-label">{p.name}</span>}
     </span>
   );
 }
 function TopicArt({ t, size }: { t: Topic; size: "sm" | "md" | "lg" }) {
   return (
-    <span className={`sp-cover sp-cover-${size} tier-${t.tier}`} style={{ "--hue": LANE_HUES[t.lane.id] ?? 220 } as React.CSSProperties} aria-hidden="true">
+    <span className={`sp-cover sp-cover-${size} tier-${t.tier}`} style={{ "--hue": LANE_HUES[t.lane.id] ?? 239 } as React.CSSProperties} aria-hidden="true">
       <span className="sp-cover-emoji">{t.lane.emoji}</span>
+      {t.logo && <Logo key={t.logo} domain={t.logo} size={size} />}
       {size !== "sm" && <span className="sp-cover-score">{t.podScore}</span>}
     </span>
   );

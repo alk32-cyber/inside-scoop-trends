@@ -7,7 +7,7 @@ export const metadata: Metadata = {
   description: "Trending-topic intelligence for the Inside Scoop podcast: what is gaining attention, why, and how to cover it.",
 };
 
-export const viewport: Viewport = { themeColor: "#0b0c0e" };
+export const viewport: Viewport = { themeColor: "#191bfe" };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (

@@ -1,0 +1,437 @@
+{
+  "_comment": "Topic name keyword -> website whose logo represents it. Matched as whole words against the topic name only, so a logo always belongs to the topic itself.",
+  "youtube.com": [
+    "youtube",
+    "youtuber",
+    "youtubers",
+    "youtube shorts"
+  ],
+  "tiktok.com": [
+    "tiktok",
+    "tiktok shop"
+  ],
+  "instagram.com": [
+    "instagram",
+    "reels"
+  ],
+  "snapchat.com": [
+    "snapchat"
+  ],
+  "x.com": [
+    "twitter",
+    "x corp"
+  ],
+  "facebook.com": [
+    "facebook"
+  ],
+  "meta.com": [
+    "meta",
+    "meta platforms",
+    "zuckerberg"
+  ],
+  "whatsapp.com": [
+    "whatsapp"
+  ],
+  "reddit.com": [
+    "reddit"
+  ],
+  "discord.com": [
+    "discord"
+  ],
+  "twitch.tv": [
+    "twitch"
+  ],
+  "kick.com": [
+    "kick streaming",
+    "kick streamer"
+  ],
+  "pinterest.com": [
+    "pinterest"
+  ],
+  "linkedin.com": [
+    "linkedin"
+  ],
+  "bereal.com": [
+    "bereal"
+  ],
+  "spotify.com": [
+    "spotify"
+  ],
+  "netflix.com": [
+    "netflix"
+  ],
+  "disneyplus.com": [
+    "disney",
+    "disney plus",
+    "marvel",
+    "pixar"
+  ],
+  "hbomax.com": [
+    "hbo",
+    "hbo max"
+  ],
+  "primevideo.com": [
+    "prime video"
+  ],
+  "amazon.com": [
+    "amazon",
+    "jeff bezos",
+    "bezos"
+  ],
+  "apple.com": [
+    "apple",
+    "iphone",
+    "ipad",
+    "macbook",
+    "airpods",
+    "vision pro",
+    "apple pay",
+    "ios",
+    "siri",
+    "tim cook"
+  ],
+  "google.com": [
+    "google",
+    "gemini",
+    "alphabet",
+    "android",
+    "sundar pichai"
+  ],
+  "microsoft.com": [
+    "microsoft",
+    "copilot"
+  ],
+  "xbox.com": [
+    "xbox",
+    "game pass"
+  ],
+  "playstation.com": [
+    "playstation",
+    "ps5",
+    "sony"
+  ],
+  "nintendo.com": [
+    "nintendo",
+    "switch 2",
+    "pokemon",
+    "mario"
+  ],
+  "steampowered.com": [
+    "steam",
+    "valve"
+  ],
+  "epicgames.com": [
+    "epic games",
+    "fortnite"
+  ],
+  "roblox.com": [
+    "roblox"
+  ],
+  "minecraft.net": [
+    "minecraft"
+  ],
+  "ea.com": [
+    "electronic arts",
+    "ea sports",
+    "fc 26",
+    "madden"
+  ],
+  "rockstargames.com": [
+    "rockstar",
+    "gta",
+    "gta 6",
+    "grand theft auto"
+  ],
+  "activision.com": [
+    "activision",
+    "call of duty"
+  ],
+  "riotgames.com": [
+    "riot games",
+    "valorant",
+    "league of legends"
+  ],
+  "openai.com": [
+    "openai",
+    "chatgpt",
+    "sora",
+    "sam altman"
+  ],
+  "anthropic.com": [
+    "anthropic",
+    "claude"
+  ],
+  "x.ai": [
+    "xai",
+    "grok"
+  ],
+  "nvidia.com": [
+    "nvidia",
+    "jensen huang"
+  ],
+  "amd.com": [
+    "amd"
+  ],
+  "intel.com": [
+    "intel"
+  ],
+  "tesla.com": [
+    "tesla",
+    "cybertruck",
+    "elon musk"
+  ],
+  "spacex.com": [
+    "spacex",
+    "starlink"
+  ],
+  "samsung.com": [
+    "samsung"
+  ],
+  "perplexity.ai": [
+    "perplexity"
+  ],
+  "mistral.ai": [
+    "mistral"
+  ],
+  "character.ai": [
+    "character ai"
+  ],
+  "duolingo.com": [
+    "duolingo"
+  ],
+  "canva.com": [
+    "canva"
+  ],
+  "figma.com": [
+    "figma"
+  ],
+  "shopify.com": [
+    "shopify"
+  ],
+  "etsy.com": [
+    "etsy"
+  ],
+  "ebay.com": [
+    "ebay"
+  ],
+  "depop.com": [
+    "depop"
+  ],
+  "vinted.com": [
+    "vinted"
+  ],
+  "stockx.com": [
+    "stockx"
+  ],
+  "temu.com": [
+    "temu"
+  ],
+  "shein.com": [
+    "shein"
+  ],
+  "walmart.com": [
+    "walmart"
+  ],
+  "costco.com": [
+    "costco"
+  ],
+  "nike.com": [
+    "nike",
+    "air jordan"
+  ],
+  "adidas.com": [
+    "adidas",
+    "yeezy"
+  ],
+  "newbalance.com": [
+    "new balance"
+  ],
+  "lululemon.com": [
+    "lululemon"
+  ],
+  "supremenewyork.com": [
+    "supreme"
+  ],
+  "stanley1913.com": [
+    "stanley cup tumbler",
+    "stanley tumbler"
+  ],
+  "starbucks.com": [
+    "starbucks"
+  ],
+  "mcdonalds.com": [
+    "mcdonald",
+    "mcdonalds"
+  ],
+  "chipotle.com": [
+    "chipotle"
+  ],
+  "crumblcookies.com": [
+    "crumbl"
+  ],
+  "drinkprime.com": [
+    "prime hydration",
+    "prime drink"
+  ],
+  "feastables.com": [
+    "feastables"
+  ],
+  "redbull.com": [
+    "red bull"
+  ],
+  "cocacola.com": [
+    "coca cola"
+  ],
+  "pepsi.com": [
+    "pepsi"
+  ],
+  "sephora.com": [
+    "sephora"
+  ],
+  "ulta.com": [
+    "ulta"
+  ],
+  "rarebeauty.com": [
+    "rare beauty"
+  ],
+  "skims.com": [
+    "skims"
+  ],
+  "glossier.com": [
+    "glossier"
+  ],
+  "cash.app": [
+    "cash app"
+  ],
+  "venmo.com": [
+    "venmo"
+  ],
+  "paypal.com": [
+    "paypal"
+  ],
+  "robinhood.com": [
+    "robinhood"
+  ],
+  "coinbase.com": [
+    "coinbase"
+  ],
+  "bitcoin.org": [
+    "bitcoin",
+    "btc"
+  ],
+  "ethereum.org": [
+    "ethereum"
+  ],
+  "klarna.com": [
+    "klarna"
+  ],
+  "mastercard.com": [
+    "mastercard"
+  ],
+  "americanexpress.com": [
+    "american express",
+    "amex"
+  ],
+  "kalshi.com": [
+    "kalshi"
+  ],
+  "polymarket.com": [
+    "polymarket"
+  ],
+  "draftkings.com": [
+    "draftkings"
+  ],
+  "fanduel.com": [
+    "fanduel"
+  ],
+  "nba.com": [
+    "nba"
+  ],
+  "nfl.com": [
+    "nfl",
+    "super bowl"
+  ],
+  "mlb.com": [
+    "mlb",
+    "world series"
+  ],
+  "nhl.com": [
+    "nhl"
+  ],
+  "fifa.com": [
+    "fifa",
+    "world cup"
+  ],
+  "premierleague.com": [
+    "premier league"
+  ],
+  "ufc.com": [
+    "ufc"
+  ],
+  "wwe.com": [
+    "wwe"
+  ],
+  "espn.com": [
+    "espn"
+  ],
+  "olympics.com": [
+    "olympics"
+  ],
+  "ticketmaster.com": [
+    "ticketmaster",
+    "live nation"
+  ],
+  "billboard.com": [
+    "billboard"
+  ],
+  "grammy.com": [
+    "grammys",
+    "grammy"
+  ],
+  "taylorswift.com": [
+    "taylor swift",
+    "eras tour"
+  ],
+  "uber.com": [
+    "uber"
+  ],
+  "lyft.com": [
+    "lyft"
+  ],
+  "airbnb.com": [
+    "airbnb"
+  ],
+  "doordash.com": [
+    "doordash"
+  ],
+  "instacart.com": [
+    "instacart"
+  ],
+  "ycombinator.com": [
+    "y combinator",
+    "yc"
+  ],
+  "techcrunch.com": [
+    "techcrunch"
+  ],
+  "nasdaq.com": [
+    "nasdaq"
+  ],
+  "united.com": [
+    "united airlines"
+  ],
+  "delta.com": [
+    "delta air lines",
+    "delta airlines"
+  ],
+  "boeing.com": [
+    "boeing"
+  ],
+  "realreal.com": [
+    "the realreal",
+    "realreal"
+  ],
+  "halide.cam": [
+    "halide"
+  ]
+}

@@ -1,4 +1,5 @@
 import teenJson from "../../config/teen.json";
+import logosJson from "../../config/logos.json";
 import { normalizeText } from "./normalize/text";
 
 /**
@@ -235,4 +236,20 @@ export function dropOverlapping<T extends { headlines: { url: string }[] }>(sort
     out.push(t);
   }
   return out;
+}
+
+const LOGOS: Array<{ domain: string; words: string[] }> = Object.entries(logosJson as Record<string, string[] | string>)
+  .filter(([domain]) => !domain.startsWith("_"))
+  .map(([domain, words]) => ({ domain, words: (words as string[]).map((w) => normalizeText(w)) }));
+
+/**
+ * The website whose logo stands for this topic ("iPhone Duo" -> apple.com), or null when the topic
+ * isn't about one brand. Only the topic name is checked, so a logo never comes from a side mention.
+ */
+export function logoDomainFor(name: string): string | null {
+  const t = ` ${normalizeText(name)} `;
+  let best: { domain: string; len: number } | null = null;
+  for (const { domain, words } of LOGOS)
+    for (const w of words) if (t.includes(` ${w} `) && (!best || w.length > best.len)) best = { domain, len: w.length };
+  return best?.domain ?? null;
 }

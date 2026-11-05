@@ -455,7 +455,7 @@ interface PodRow {
  * request from the stored trend scores plus each topic's recent headlines.
  */
 export async function listPodTopics(q: PodQuery, opts: { db?: Db; demo?: boolean; now?: number } = {}) {
-  const { podScore, LANES_PUBLIC, TIERS, dropOverlapping } = await import("../pod");
+  const { podScore, LANES_PUBLIC, TIERS, dropOverlapping, logoDomainFor } = await import("../pod");
   const db = opts.db ?? (await getDb());
   const demo = opts.demo ?? isDemoMode();
   const now = opts.now ?? Date.now();
@@ -498,6 +498,7 @@ export async function listPodTopics(q: PodQuery, opts: { db?: Db; demo?: boolean
       id: r.topic_id,
       name: r.name,
       lane: pod.lane,
+      logo: logoDomainFor(r.name),
       podScore: pod.podScore,
       tier: pod.tier,
       tierLabel: TIERS[pod.tier].label,

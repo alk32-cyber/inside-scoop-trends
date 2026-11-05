@@ -10,7 +10,7 @@ export function Frame({ children }: { children: React.ReactNode }) {
     <div className="shell">
       <header className="topbar">
         <a className="brand" href="/">
-          <span className="brand-mark" aria-hidden="true">IS</span>
+          <img className="brand-mark" src="/logo.png" alt="" width={34} height={34} />
           <span>
             <span className="brand-name">Inside Scoop</span>
             <span className="brand-sub"> · Topic Finder</span>

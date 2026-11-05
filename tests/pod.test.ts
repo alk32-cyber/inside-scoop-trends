@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { coverageScore, dropOverlapping, inSentence, podScore, starters, teenAppeal, tierFor } from "@/lib/pod";
+import { coverageScore, dropOverlapping, logoDomainFor, inSentence, podScore, starters, teenAppeal, tierFor } from "@/lib/pod";
 
 const NOW = Date.UTC(2026, 9, 26, 12);
 const iso = (hoursAgo: number) => new Date(NOW - hoursAgo * 3600_000).toISOString();
@@ -79,5 +79,18 @@ describe("dropOverlapping", () => {
       { id: "apple", headlines: [h("x"), h("a")] },
     ]);
     expect(out.map((t) => t.id)).toEqual(["anthropic", "apple"]);
+  });
+});
+
+describe("logoDomainFor", () => {
+  it("finds the brand a topic is about, and nothing for generic topics", () => {
+    expect(logoDomainFor("iPhone Duo")).toBe("apple.com");
+    expect(logoDomainFor("YouTube")).toBe("youtube.com");
+    expect(logoDomainFor("anthropic ipo filing")).toBe("anthropic.com");
+    expect(logoDomainFor("TikTok Shop")).toBe("tiktok.com");
+    expect(logoDomainFor("Steam game")).toBe("steampowered.com");
+    expect(logoDomainFor("Side hustles")).toBeNull();
+    expect(logoDomainFor("AI agents")).toBeNull();
+    expect(logoDomainFor("Pineapple pizza")).toBeNull();
   });
 });

@@ -455,7 +455,7 @@ interface PodRow {
  * request from the stored trend scores plus each topic's recent headlines.
  */
 export async function listPodTopics(q: PodQuery, opts: { db?: Db; demo?: boolean; now?: number } = {}) {
-  const { podScore, LANES_PUBLIC, TIERS, dropOverlapping, logoDomainFor } = await import("../pod");
+  const { podScore, LANES_PUBLIC, TIERS, dropOverlapping, logoDomainFor, logoSrcFor } = await import("../pod");
   const db = opts.db ?? (await getDb());
   const demo = opts.demo ?? isDemoMode();
   const now = opts.now ?? Date.now();
@@ -498,7 +498,7 @@ export async function listPodTopics(q: PodQuery, opts: { db?: Db; demo?: boolean
       id: r.topic_id,
       name: r.name,
       lane: pod.lane,
-      logo: logoDomainFor(r.name),
+      ...logoFields(logoDomainFor(r.name, headlines.map((h) => h.title)), logoSrcFor),
       podScore: pod.podScore,
       tier: pod.tier,
       tierLabel: TIERS[pod.tier].label,
@@ -552,5 +552,10 @@ export async function listPodTopics(q: PodQuery, opts: { db?: Db; demo?: boolean
     lastUpdated,
     items: sorted.slice(q.offset, q.offset + q.limit),
   };
+}
+function logoFields(domain: string | null, srcFor: (d: string) => { src: string; kind: "icon" | "favicon" }) {
+  if (!domain) return { logo: null, logoSrc: null, logoKind: null };
+  const { src, kind } = srcFor(domain);
+  return { logo: domain, logoSrc: src, logoKind: kind };
 }
 export type PodTopic = Awaited<ReturnType<typeof listPodTopics>>["items"][number];

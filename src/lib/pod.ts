@@ -1,5 +1,6 @@
 import teenJson from "../../config/teen.json";
 import logosJson from "../../config/logos.json";
+import brandIconsJson from "../../config/brand-icons.json";
 import { normalizeText } from "./normalize/text";
 
 /**
@@ -242,14 +243,38 @@ const LOGOS: Array<{ domain: string; words: string[] }> = Object.entries(logosJs
   .filter(([domain]) => !domain.startsWith("_"))
   .map(([domain, words]) => ({ domain, words: (words as string[]).map((w) => normalizeText(w)) }));
 
-/**
- * The website whose logo stands for this topic ("iPhone Duo" -> apple.com), or null when the topic
- * isn't about one brand. Only the topic name is checked, so a logo never comes from a side mention.
- */
-export function logoDomainFor(name: string): string | null {
-  const t = ` ${normalizeText(name)} `;
+function brandIn(text: string): string | null {
+  const t = ` ${normalizeText(text)} `;
   let best: { domain: string; len: number } | null = null;
   for (const { domain, words } of LOGOS)
     for (const w of words) if (t.includes(` ${w} `) && (!best || w.length > best.len)) best = { domain, len: w.length };
   return best?.domain ?? null;
+}
+
+/**
+ * The website whose logo stands for this topic ("iPhone Duo" -> apple.com), or null when it isn't
+ * about one brand. The topic name decides first; otherwise a brand counts only when it appears in
+ * at least half of the topic's headlines (and at least two), e.g. a "Creator deals" topic whose
+ * stories are all about TikTok gets TikTok's logo.
+ */
+export function logoDomainFor(name: string, headlines: string[] = []): string | null {
+  const fromName = brandIn(name);
+  if (fromName) return fromName;
+  const counts = new Map<string, number>();
+  for (const h of headlines) {
+    const found = new Set<string>();
+    for (const { domain, words } of LOGOS) if (words.some((w) => ` ${normalizeText(h)} `.includes(` ${w} `))) found.add(domain);
+    found.forEach((d) => counts.set(d, (counts.get(d) ?? 0) + 1));
+  }
+  const [top] = [...counts.entries()].sort((x, y) => y[1] - x[1]);
+  return top && top[1] >= 2 && top[1] >= headlines.length / 2 ? top[0] : null;
+}
+
+const BRAND_ICONS = new Set<string>(brandIconsJson as string[]);
+
+/** Crisp bundled brand icon when we have one, otherwise the site's favicon via Google. */
+export function logoSrcFor(domain: string): { src: string; kind: "icon" | "favicon" } {
+  return BRAND_ICONS.has(domain)
+    ? { src: `/brands/${domain}.svg`, kind: "icon" }
+    : { src: `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=128`, kind: "favicon" };
 }

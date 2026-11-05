@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { coverageScore, dropOverlapping, logoDomainFor, inSentence, podScore, starters, teenAppeal, tierFor } from "@/lib/pod";
+import { coverageScore, dropOverlapping, logoDomainFor, logoSrcFor, inSentence, podScore, starters, teenAppeal, tierFor } from "@/lib/pod";
 
 const NOW = Date.UTC(2026, 9, 26, 12);
 const iso = (hoursAgo: number) => new Date(NOW - hoursAgo * 3600_000).toISOString();
@@ -92,5 +92,20 @@ describe("logoDomainFor", () => {
     expect(logoDomainFor("Side hustles")).toBeNull();
     expect(logoDomainFor("AI agents")).toBeNull();
     expect(logoDomainFor("Pineapple pizza")).toBeNull();
+  });
+});
+
+describe("logos from headlines and bundled icons", () => {
+  it("uses a brand that most of the topic's stories are about", () => {
+    const tiktok = ["TikTok creators get new payouts", "Brands flock to TikTok Shop live", "Why everyone is selling on TikTok"];
+    expect(logoDomainFor("Creator deals", tiktok)).toBe("tiktok.com");
+    expect(logoDomainFor("Streaks", ["Snapchat adds new streak rewards", "Snapchat+ hits 20 million subscribers"])).toBe("snapchat.com");
+    // One passing mention is not enough.
+    expect(logoDomainFor("Creator deals", ["TikTok creators get new payouts", "Brand deals are drying up", "Agencies cut rates"])).toBeNull();
+  });
+
+  it("prefers the bundled icon and falls back to the site favicon", () => {
+    expect(logoSrcFor("tiktok.com")).toEqual({ src: "/brands/tiktok.com.svg", kind: "icon" });
+    expect(logoSrcFor("canva.com").kind).toBe("favicon");
   });
 });

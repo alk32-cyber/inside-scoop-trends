@@ -35,6 +35,8 @@ interface Topic {
   isDemo: boolean;
   /** Website whose logo stands for the topic (e.g. apple.com for "iPhone Duo"), or null. */
   logo: string | null;
+  logoSrc: string | null;
+  logoKind: "icon" | "favicon" | null;
 }
 interface ApiResponse {
   mode: "live" | "demo";
@@ -115,7 +117,6 @@ const greeting = () => {
   return h < 5 ? "Up late?" : h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening";
 };
 const LANE_HUES: Record<string, number> = { creators: 250, gaming: 262, money: 228, tech: 239, brands: 246, entertainment: 256, startups: 232, other: 239 };
-const logoUrl = (domain: string) => `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=128`;
 
 export function PodApp() {
   const [data, setData] = useState<ApiResponse | null>(null);
@@ -456,13 +457,13 @@ interface Ctx {
 }
 
 // ---------- art ----------
-function Logo({ domain, size }: { domain: string; size: "sm" | "md" | "lg" }) {
+function Logo({ src, kind, size }: { src: string; kind: "icon" | "favicon"; size: "sm" | "md" | "lg" }) {
   const [failed, setFailed] = useState(false);
   if (failed) return null;
   return (
-    <span className={`sp-logo-tile sp-logo-${size}`}>
+    <span className={`sp-logo-tile sp-logo-${size}${kind === "icon" ? " is-icon" : ""}`}>
       <img
-        src={logoUrl(domain)}
+        src={src}
         alt=""
         loading="lazy"
         referrerPolicy="no-referrer"
@@ -475,14 +476,15 @@ function Logo({ domain, size }: { domain: string; size: "sm" | "md" | "lg" }) {
 }
 function Cover({ p, size }: { p: Playlist; size: "sm" | "md" | "lg" }) {
   // Like Spotify: a playlist cover is a mosaic of what's inside, here the logos of its top topics.
-  const logos = [...new Set(p.topics.map((t) => t.logo).filter((d): d is string => !!d))].slice(0, 4);
+  const seen = new Set<string>();
+  const logos = p.topics.filter((t) => t.logo && t.logoSrc && !seen.has(t.logo) && seen.add(t.logo)).slice(0, 4);
   return (
     <span className={`sp-cover sp-cover-${size}`} style={{ "--hue": p.hue } as React.CSSProperties} aria-hidden="true">
       {logos.length === 4 && size !== "sm" ? (
         <span className="sp-mosaic">
-          {logos.map((d) => (
-            <span key={d}>
-              <Logo domain={d} size="sm" />
+          {logos.map((t) => (
+            <span key={t.logo}>
+              <Logo src={t.logoSrc!} kind={t.logoKind ?? "favicon"} size="sm" />
             </span>
           ))}
         </span>
@@ -497,7 +499,7 @@ function TopicArt({ t, size }: { t: Topic; size: "sm" | "md" | "lg" }) {
   return (
     <span className={`sp-cover sp-cover-${size} tier-${t.tier}`} style={{ "--hue": LANE_HUES[t.lane.id] ?? 239 } as React.CSSProperties} aria-hidden="true">
       <span className="sp-cover-emoji">{t.lane.emoji}</span>
-      {t.logo && <Logo key={t.logo} domain={t.logo} size={size} />}
+      {t.logoSrc && <Logo key={t.logoSrc} src={t.logoSrc} kind={t.logoKind ?? "favicon"} size={size} />}
       {size !== "sm" && <span className="sp-cover-score">{t.podScore}</span>}
     </span>
   );

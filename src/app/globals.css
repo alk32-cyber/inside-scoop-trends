@@ -522,3 +522,7 @@ dl.kv dd { margin: 0; }
 .sp-quick-main .sp-cover-label { display: none; }
 .sp-fab, .sp-play { box-shadow: 0 6px 18px rgb(0 0 40 / 0.55); }
 .sp-pl-kind { color: #fff; opacity: 0.85; }
+/* Bundled brand icons are full app-icon squares: no white tile around them. */
+.sp-logo-tile.is-icon { background: none; border-radius: 22%; overflow: hidden; }
+.sp-logo-tile.is-icon img { width: 100%; height: 100%; }
+.sp-mosaic .sp-logo-tile.is-icon { border-radius: 18%; }
